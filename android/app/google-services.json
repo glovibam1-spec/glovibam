@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "195555036752",
+    "project_id": "glovibam",
+    "storage_bucket": "glovibam.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:195555036752:android:25ef4f15f782ca27ea0b55",
+        "android_client_info": {
+          "package_name": "com.glovibam.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAQ5jHuf35kapy1QsT64dUQTX6jhjv7mfM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

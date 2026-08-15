@@ -1,0 +1,49 @@
+name: glovibam
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  webview_flutter: ^4.14.1
+  firebase_core: ^4.13.0
+  firebase_messaging: ^16.5.0
+  flutter_local_notifications: ^17.2.4
+  connectivity_plus: ^7.3.1
+  flutter_native_splash: ^2.4.8
+  url_launcher: ^6.3.2
+  file_picker: ^8.1.2
+  firebase_crashlytics: ^5.2.7
+  webview_flutter_android: ^4.13.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
+
+flutter_native_splash:
+  color: "#ffffff"
+  image: assets/splash_logo.png
+  android_12:
+    image: assets/splash_logo.png
+    color: "#ffffff"
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/app_icon.png"
+  min_sdk_android: 21
