@@ -33,6 +33,16 @@ workflows:
         script: |
           find . -name "Podfile" -maxdepth 2 -execdir pod install \;
 
+      - name: Set up Android signing
+        script: |
+          echo $CM_KEYSTORE | base64 --decode > $CM_BUILD_DIR/android/app/glovibam-release-key.jks
+          cat >> "$CM_BUILD_DIR/android/key.properties" <<EOF
+          storePassword=$CM_KEYSTORE_PASSWORD
+          keyPassword=$CM_KEY_PASSWORD
+          keyAlias=$CM_KEY_ALIAS
+          storeFile=$CM_BUILD_DIR/android/app/glovibam-release-key.jks
+          EOF
+
       - name: Flutter build Android (AAB)
         script: |
           flutter build appbundle --release
