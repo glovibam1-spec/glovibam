@@ -1,0 +1,45 @@
+workflows:
+  glovibam-workflow:
+    name: GLOVIBAM Build
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      groups:
+        - firebase_ios
+    scripts:
+      - name: Decode GoogleService-Info.plist for iOS
+        script: |
+          echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
+
+      - name: Get Flutter packages
+        script: |
+          flutter packages pub get
+
+      - name: Install CocoaPods dependencies
+        script: |
+          find . -name "Podfile" -maxdepth 2 -execdir pod install \;
+
+      - name: Flutter build Android (AAB)
+        script: |
+          flutter build appbundle --release
+
+      - name: Flutter build iOS (no codesign)
+        script: |
+          flutter build ios --release --no-codesign
+
+    artifacts:
+      - build/**/outputs/**/*.aab
+      - build/**/outputs/**/*.apk
+      - build/ios/iphoneos/*.app
+      - flutter_drive.log
+
+    publishing:
+      email:
+        recipients:
+          - glovibam1@gmail.com
+        notify:
+          success: true
+          failure: true
