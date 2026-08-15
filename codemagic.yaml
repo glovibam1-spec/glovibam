@@ -18,6 +18,17 @@ workflows:
         script: |
           flutter packages pub get
 
+      - name: Patch file_picker compileSdk to 36
+        script: |
+          FILE_PICKER_GRADLE=$(find $HOME/.pub-cache/hosted/pub.dev -maxdepth 1 -iname "file_picker-*" -type d | head -n 1)/android/build.gradle
+          if [ -f "$FILE_PICKER_GRADLE" ]; then
+            sed -i '' 's/compileSdk [0-9]*/compileSdk 36/' "$FILE_PICKER_GRADLE"
+            echo "Patched: $FILE_PICKER_GRADLE"
+            cat "$FILE_PICKER_GRADLE" | grep compileSdk
+          else
+            echo "file_picker build.gradle not found, skipping patch"
+          fi
+
       - name: Install CocoaPods dependencies
         script: |
           find . -name "Podfile" -maxdepth 2 -execdir pod install \;
