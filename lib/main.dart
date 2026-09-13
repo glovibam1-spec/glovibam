@@ -79,6 +79,10 @@ class _HomeScreenState extends State<HomeScreen> {
   bool hasError = false;
   bool isOffline = false;
 
+  // عداد لمحاولات إعادة التحميل التلقائية قبل إظهار خطأ للمستخدم
+  int _errorRetryCount = 0;
+  static const int _maxAutoRetries = 2;
+
   late final StreamSubscription<List<ConnectivityResult>> _connectivitySub;
 
   // امتدادات الملفات التي تعتبر "تنزيل" وليست صفحة عادية
@@ -202,12 +206,43 @@ class _HomeScreenState extends State<HomeScreen> {
             setState(() {
               isLoading = false;
             });
+            // نجح التحميل بالكامل، نصفّر عداد إعادة المحاولة
+            _errorRetryCount = 0;
           },
           onWebResourceError: (WebResourceError error) {
-            setState(() {
-              isLoading = false;
-              hasError = true;
-            });
+            // نتجاهل أي خطأ لا يخص الإطار الرئيسي للصفحة
+            // (مثل: صورة فشلت، سكريبت خارجي، إعلان، خط، أيقونة...)
+            // هذي أخطاء ثانوية شائعة جدًا ولا تعني أن الموقع نفسه معطّل.
+            final bool isMainFrame = error.isForMainFrame ?? true;
+            if (!isMainFrame) {
+              return;
+            }
+
+            // نتجاهل أيضًا أكواد أخطاء غير حرجة معروفة
+            // (مثل إلغاء التحميل بسبب تنقّل سريع بين الصفحات)
+            if (error.errorType == WebResourceErrorType.unknown &&
+                error.description.toLowerCase().contains('net::err_cache')) {
+              return;
+            }
+
+            // محاولة تلقائية لإعادة التحميل قبل إزعاج المستخدم بأي رسالة
+            if (_errorRetryCount < _maxAutoRetries) {
+              _errorRetryCount++;
+              Future.delayed(const Duration(milliseconds: 800), () {
+                if (mounted) {
+                  controller.reload();
+                }
+              });
+              return;
+            }
+
+            // فقط بعد استنفاد المحاولات نعرض شاشة الخطأ فعليًا
+            if (mounted) {
+              setState(() {
+                isLoading = false;
+                hasError = true;
+              });
+            }
             FirebaseCrashlytics.instance.recordError(
               'WebView error: ${error.description}',
               null,
@@ -265,6 +300,7 @@ class _HomeScreenState extends State<HomeScreen> {
       hasError = false;
       isLoading = true;
     });
+    _errorRetryCount = 0;
     controller.reload();
   }
 
