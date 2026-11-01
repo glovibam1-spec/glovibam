@@ -47,17 +47,73 @@ workflows:
         script: |
           flutter build appbundle --release
 
-      - name: Flutter build iOS (no codesign)
-        script: |
-          flutter build ios --release --no-codesign
-
     artifacts:
       - build/**/outputs/**/*.aab
       - build/**/outputs/**/*.apk
-      - build/ios/iphoneos/*.app
       - flutter_drive.log
 
     publishing:
+      email:
+        recipients:
+          - glovibam1@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  ios-release:
+    name: GLOVIBAM iOS Release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: "GLOVIBAM Apple Key"
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      groups:
+        - firebase_ios
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.glovibam.app
+      vars:
+        APP_STORE_APP_ID: 0000000000   # غيّره إلى Apple ID الرقمي للتطبيق
+    scripts:
+      - name: Decode GoogleService-Info.plist for iOS
+        script: |
+          echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
+
+      - name: Get Flutter packages
+        script: |
+          flutter packages pub get
+
+      - name: Install CocoaPods dependencies
+        script: |
+          find . -name "Podfile" -maxdepth 2 -execdir pod install \;
+
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+
+      - name: Set build number
+        script: |
+          LATEST=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APP_ID")
+          echo "BUILD_NUMBER=$((${LATEST:-0} + 1))" >> $CM_ENV
+
+      - name: Build IPA
+        script: |
+          flutter build ipa --release \
+            --build-number=$BUILD_NUMBER \
+            --export-options-plist=/Users/builder/export_options.plist
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
+        submit_to_app_store: false
       email:
         recipients:
           - glovibam1@gmail.com
