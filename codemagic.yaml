@@ -1,3 +1,65 @@
+workflows:
+  glovibam-workflow:
+    name: GLOVIBAM Build
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      groups:
+        - firebase_ios
+    scripts:
+      - name: Decode GoogleService-Info.plist for iOS
+        script: |
+          echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
+
+      - name: Get Flutter packages
+        script: |
+          flutter packages pub get
+
+      - name: Patch file_picker compileSdk to 36
+        script: |
+          FILE_PICKER_GRADLE=$(find $HOME/.pub-cache/hosted/pub.dev -maxdepth 1 -iname "file_picker-*" -type d | head -n 1)/android/build.gradle
+          if [ -f "$FILE_PICKER_GRADLE" ]; then
+            sed -i '' 's/compileSdk [0-9]*/compileSdk 36/' "$FILE_PICKER_GRADLE"
+            echo "Patched: $FILE_PICKER_GRADLE"
+            cat "$FILE_PICKER_GRADLE" | grep compileSdk
+          else
+            echo "file_picker build.gradle not found, skipping patch"
+          fi
+
+      - name: Install CocoaPods dependencies
+        script: |
+          find . -name "Podfile" -maxdepth 2 -execdir pod install \;
+
+      - name: Set up Android signing
+        script: |
+          echo $CM_KEYSTORE | base64 --decode > $CM_BUILD_DIR/android/app/glovibam-release-key.jks
+          cat >> "$CM_BUILD_DIR/android/key.properties" <<EOF
+          storePassword=$CM_KEYSTORE_PASSWORD
+          keyPassword=$CM_KEY_PASSWORD
+          keyAlias=$CM_KEY_ALIAS
+          storeFile=$CM_BUILD_DIR/android/app/glovibam-release-key.jks
+          EOF
+
+      - name: Flutter build Android (AAB)
+        script: |
+          flutter build appbundle --release
+
+    artifacts:
+      - build/**/outputs/**/*.aab
+      - build/**/outputs/**/*.apk
+      - flutter_drive.log
+
+    publishing:
+      email:
+        recipients:
+          - glovibam1@gmail.com
+        notify:
+          success: true
+          failure: true
+
   ios-release:
     name: GLOVIBAM iOS Release
     max_build_duration: 60
@@ -12,7 +74,7 @@
         - firebase_ios
       vars:
         BUNDLE_ID: "com.glovibam.app"
-        APP_STORE_APP_ID: SS7UH2U2B9   # اتركه رقمك الحقيقي الذي وضعته سابقًا
+        APP_STORE_APP_ID: 6829446484
     scripts:
       - name: Decode GoogleService-Info.plist for iOS
         script: |
