@@ -2,6 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 	<dict>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>يحتاج التطبيق إلى الوصول لمكتبة الصور لاختيار صور المنتجات والصورة الشخصية ورفعها.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>يحتاج التطبيق إلى الكاميرا لالتقاط صور المنتجات والصورة الشخصية.</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>يستخدم التطبيق موقعك لعرض الخدمات والعناوين القريبة منك.</string>
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false/>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>
 		<key>CFBundleDevelopmentRegion</key>
