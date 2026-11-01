@@ -76,7 +76,7 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.glovibam.app
       vars:
-        APP_STORE_APP_ID: 0000000000   # غيّره إلى Apple ID الرقمي للتطبيق
+        APP_STORE_APP_ID: SS7UH2U2B9   # غيّره إلى Apple ID الرقمي للتطبيق
     scripts:
       - name: Decode GoogleService-Info.plist for iOS
         script: |
