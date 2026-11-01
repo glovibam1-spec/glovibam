@@ -116,6 +116,14 @@ workflows:
           LATEST=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APP_ID")
           echo "BUILD_NUMBER=$((${LATEST:-0} + 1))" >> $CM_ENV
 
+      - name: Remove alpha from iOS app icons
+        script: |
+          which magick || brew install imagemagick
+          for ICON in ios/Runner/Assets.xcassets/AppIcon.appiconset/*.png; do
+            magick "$ICON" -background white -alpha remove -alpha off "$ICON"
+            echo "Fixed: $ICON"
+          done
+
       - name: Build IPA
         script: |
           flutter build ipa --release \
