@@ -102,6 +102,11 @@ workflows:
         script: |
           keychain add-certificates
 
+      - name: Set bundle identifier
+        script: |
+          sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = com\.example\.[A-Za-z0-9_-]*;/PRODUCT_BUNDLE_IDENTIFIER = com.glovibam.app;/' ios/Runner.xcodeproj/project.pbxproj
+          grep PRODUCT_BUNDLE_IDENTIFIER ios/Runner.xcodeproj/project.pbxproj
+
       - name: Set up code signing on Xcode project
         script: |
           xcode-project use-profiles
