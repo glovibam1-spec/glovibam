@@ -14,6 +14,16 @@ import 'package:file_picker/file_picker.dart';
 final FlutterLocalNotificationsPlugin _localNotifications =
     FlutterLocalNotificationsPlugin();
 
+bool get _firebaseReady => Firebase.apps.isNotEmpty;
+
+void _logNonFatal(Object error) {
+  try {
+    if (_firebaseReady) {
+      FirebaseCrashlytics.instance.recordError(error, null, fatal: false);
+    }
+  } catch (_) {}
+}
+
 @pragma('vm:entry-point')
 Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
@@ -22,25 +32,49 @@ Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp();
+  // ================= Firebase (لا يوقف التطبيق إذا فشل) =================
+  try {
+    await Firebase.initializeApp().timeout(const Duration(seconds: 10));
 
-  // ================= Crashlytics =================
-  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-  PlatformDispatcher.instance.onError = (error, stack) {
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-    return true;
-  };
+    // ================= Crashlytics =================
+    FlutterError.onError = (details) {
+      try {
+        FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+      } catch (_) {}
+    };
+    PlatformDispatcher.instance.onError = (error, stack) {
+      try {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      } catch (_) {}
+      return true;
+    };
 
-  FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+    FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+  } catch (e) {
+    debugPrint('Firebase init failed: $e');
+  }
 
-  await _initLocalNotifications();
+  // ================= الإشعارات المحلية (لا توقف التطبيق إذا فشلت) =================
+  try {
+    await _initLocalNotifications().timeout(const Duration(seconds: 5));
+  } catch (e) {
+    debugPrint('Local notifications init failed: $e');
+  }
 
   runApp(const GlovibamApp());
 }
 
 Future<void> _initLocalNotifications() async {
   const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-  const initSettings = InitializationSettings(android: androidSettings);
+  const iosSettings = DarwinInitializationSettings(
+    requestAlertPermission: false,
+    requestBadgePermission: false,
+    requestSoundPermission: false,
+  );
+  const initSettings = InitializationSettings(
+    android: androidSettings,
+    iOS: iosSettings,
+  );
   await _localNotifications.initialize(initSettings);
 }
 
@@ -107,35 +141,52 @@ class _HomeScreenState extends State<HomeScreen> {
   // ================= الإشعارات =================
 
   Future<void> _initPushNotifications() async {
-    final messaging = FirebaseMessaging.instance;
+    if (!_firebaseReady) return;
 
-    await messaging.requestPermission(alert: true, badge: true, sound: true);
+    try {
+      final messaging = FirebaseMessaging.instance;
 
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      final notification = message.notification;
-      if (notification != null) {
-        _localNotifications.show(
-          notification.hashCode,
-          notification.title,
-          notification.body,
-          const NotificationDetails(
-            android: AndroidNotificationDetails(
-              'high_importance_channel',
-              'إشعارات مهمة',
-              importance: Importance.high,
-              priority: Priority.high,
+      await messaging.requestPermission(alert: true, badge: true, sound: true);
+
+      // على iOS يعرض النظام الإشعار تلقائيًا والتطبيق مفتوح
+      await messaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        // على iOS لا نعرض إشعارًا محليًا حتى لا يتكرر الإشعار
+        if (defaultTargetPlatform == TargetPlatform.iOS) return;
+
+        final notification = message.notification;
+        if (notification != null) {
+          _localNotifications.show(
+            notification.hashCode,
+            notification.title,
+            notification.body,
+            const NotificationDetails(
+              android: AndroidNotificationDetails(
+                'high_importance_channel',
+                'إشعارات مهمة',
+                importance: Importance.high,
+                priority: Priority.high,
+              ),
+              iOS: DarwinNotificationDetails(),
             ),
-          ),
-        );
-      }
-    });
+          );
+        }
+      });
 
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      final link = message.data['url'];
-      if (link != null && link is String) {
-        controller.loadRequest(Uri.parse(link));
-      }
-    });
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        final link = message.data['url'];
+        if (link != null && link is String) {
+          controller.loadRequest(Uri.parse(link));
+        }
+      });
+    } catch (e) {
+      debugPrint('Push init failed: $e');
+    }
   }
 
   // ================= الاتصال بالإنترنت =================
@@ -211,15 +262,12 @@ class _HomeScreenState extends State<HomeScreen> {
           },
           onWebResourceError: (WebResourceError error) {
             // نتجاهل أي خطأ لا يخص الإطار الرئيسي للصفحة
-            // (مثل: صورة فشلت، سكريبت خارجي، إعلان، خط، أيقونة...)
-            // هذي أخطاء ثانوية شائعة جدًا ولا تعني أن الموقع نفسه معطّل.
             final bool isMainFrame = error.isForMainFrame ?? true;
             if (!isMainFrame) {
               return;
             }
 
             // نتجاهل أيضًا أكواد أخطاء غير حرجة معروفة
-            // (مثل إلغاء التحميل بسبب تنقّل سريع بين الصفحات)
             if (error.errorType == WebResourceErrorType.unknown &&
                 error.description.toLowerCase().contains('net::err_cache')) {
               return;
@@ -243,11 +291,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 hasError = true;
               });
             }
-            FirebaseCrashlytics.instance.recordError(
-              'WebView error: ${error.description}',
-              null,
-              fatal: false,
-            );
+            _logNonFatal('WebView error: ${error.description}');
           },
           onNavigationRequest: (NavigationRequest request) {
             final url = request.url;
@@ -290,7 +334,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return [Uri.file(path).toString()];
       }
     } catch (e) {
-      FirebaseCrashlytics.instance.recordError(e, null, fatal: false);
+      _logNonFatal(e);
     }
     return [];
   }
