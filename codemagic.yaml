@@ -124,9 +124,59 @@ workflows:
             echo "Fixed: $ICON"
           done
 
+      - name: Fix launch screen logo size
+        script: |
+          if [ -d "ios/Runner/Assets.xcassets/LaunchImage.imageset" ]; then
+            cat > ios/Runner/Base.lproj/LaunchScreen.storyboard <<'EOF'
+          <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+          <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="21701" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
+              <dependencies>
+                  <deployment identifier="iOS"/>
+                  <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="21679"/>
+                  <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+              </dependencies>
+              <scenes>
+                  <scene sceneID="EHf-IW-A2E">
+                      <objects>
+                          <viewController id="01J-lp-oVM" sceneMemberID="viewController">
+                              <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
+                                  <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                                  <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                                  <subviews>
+                                      <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="LaunchImage" translatesAutoresizingMaskIntoConstraints="NO" id="YRO-k0-Ey4">
+                                      </imageView>
+                                  </subviews>
+                                  <viewLayoutGuide key="safeArea" id="Bcu-3y-fUS"/>
+                                  <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                  <constraints>
+                                      <constraint firstItem="YRO-k0-Ey4" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="1a2-6s-vTC"/>
+                                      <constraint firstItem="YRO-k0-Ey4" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="4X2-HB-R7a"/>
+                                      <constraint firstAttribute="width" secondItem="YRO-k0-Ey4" constant="160" id="W16-Ls-wd1">
+                                      </constraint>
+                                      <constraint firstAttribute="height" secondItem="YRO-k0-Ey4" constant="160" id="H16-Ls-ht1">
+                                      </constraint>
+                                  </constraints>
+                              </view>
+                          </viewController>
+                          <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
+                      </objects>
+                      <point key="canvasLocation" x="53" y="375"/>
+                  </scene>
+              </scenes>
+              <resources>
+                  <image name="LaunchImage" width="168" height="185"/>
+              </resources>
+          </document>
+          EOF
+            echo "LaunchScreen.storyboard updated"
+          else
+            echo "LaunchImage.imageset not found, skipping launch screen fix"
+          fi
+
       - name: Build IPA
         script: |
           flutter build ipa --release \
+            --build-name=1.0.1 \
             --build-number=$BUILD_NUMBER \
             --export-options-plist=/Users/builder/export_options.plist
 
